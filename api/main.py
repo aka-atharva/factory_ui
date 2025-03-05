@@ -97,7 +97,7 @@ class DataStore:
             return self._initialize_metrics()
         
         # Calculate average metrics
-        avg_production = self.df['Production Volume (units)'].mean()
+        avg_production = round(self.df['Production Volume (units)'].mean(),2)
         avg_efficiency = self.df['Machine Utilization (%)'].mean()
         avg_downtime = self.df['Machine Downtime (hours)'].mean()
         avg_profit_margin = self.df['Profit Margin (%)'].mean()

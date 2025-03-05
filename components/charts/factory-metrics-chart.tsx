@@ -1,19 +1,25 @@
 "use client"
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
-
-interface ChartData {
-  name: string
-  production: number
-  efficiency: number
-  downtime: number
-}
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts"
+import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent"
+import type { TimeSeriesDataPoint } from "@/lib/api-service"
 
 interface FactoryMetricsChartProps {
-  data: ChartData[]
+  data: TimeSeriesDataPoint[]
+  dataKey: string
+  color?: string
+  yAxisLabel?: string
 }
 
-export function FactoryMetricsChart({ data }: FactoryMetricsChartProps) {
+export function FactoryMetricsChart({ data, dataKey, color = "#8884d8", yAxisLabel = "" }: FactoryMetricsChartProps) {
+  // Custom tooltip formatter
+  const customTooltipFormatter = (value: ValueType, name: NameType) => {
+    if (typeof value === "number") {
+      return [`${value.toFixed(1)}${yAxisLabel === "%" ? "%" : ""}`, name.toString()]
+    }
+    return [value, name]
+  }
+
   return (
     <ResponsiveContainer width="100%" height={350}>
       <LineChart
@@ -25,21 +31,26 @@ export function FactoryMetricsChart({ data }: FactoryMetricsChartProps) {
           bottom: 5,
         }}
       >
-        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-        <XAxis dataKey="name" className="text-xs text-muted-foreground" />
-        <YAxis yAxisId="left" className="text-xs text-muted-foreground" />
-        <YAxis yAxisId="right" orientation="right" className="text-xs text-muted-foreground" />
-        <Tooltip
-          contentStyle={{
-            backgroundColor: "hsl(var(--card))",
-            borderColor: "hsl(var(--border))",
-            color: "hsl(var(--foreground))",
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="name" padding={{ left: 20, right: 20 }} />
+        <YAxis
+          label={{
+            value: yAxisLabel,
+            angle: -90,
+            position: "insideLeft",
+            style: { textAnchor: "middle" },
           }}
         />
+        <Tooltip formatter={customTooltipFormatter} />
         <Legend />
-        <Line yAxisId="left" type="monotone" dataKey="production" stroke="hsl(var(--primary))" activeDot={{ r: 8 }} />
-        <Line yAxisId="left" type="monotone" dataKey="efficiency" stroke="#10b981" />
-        <Line yAxisId="right" type="monotone" dataKey="downtime" stroke="#f43f5e" />
+        <Line
+          type="monotone"
+          dataKey={dataKey}
+          name={dataKey.charAt(0).toUpperCase() + dataKey.slice(1)}
+          stroke={color}
+          activeDot={{ r: 8 }}
+          strokeWidth={2}
+        />
       </LineChart>
     </ResponsiveContainer>
   )

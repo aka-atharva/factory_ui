@@ -1,73 +1,132 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowUp, Factory, LineChart, Percent, TrendingUp } from "lucide-react"
+import { ArrowUp, Factory, LineChart, Percent, TrendingUp, RefreshCw } from "lucide-react"
 import { FactoryMetricsChart } from "@/components/charts/factory-metrics-chart"
 import { FactoryStatusTable } from "@/components/tables/factory-status-table"
-import { FactoryApi, type FactoryMetrics, type FactoryStatus } from "@/lib/api-service"
+import { FactoryApi, type FactoryMetrics, type FactoryStatus, type TimeSeriesDataPoint } from "@/lib/api-service"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+
+// Import the old FactoryStatus type to handle the type mismatch
+
+
+type TimeFilter = "monthly" | "yearly"
 
 export default function FactoryDashboard() {
   const [metrics, setMetrics] = useState<FactoryMetrics | null>(null)
   const [status, setStatus] = useState<FactoryStatus[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("monthly")
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true)
-      try {
-        // Fetch metrics
-        const metricsResponse = await FactoryApi.getFactoryMetrics()
-        if (metricsResponse.success && metricsResponse.data) {
-          setMetrics(metricsResponse.data)
-        } else {
-          setError(metricsResponse.error || "Failed to fetch metrics")
-        }
-
-        // Fetch status
-        const statusResponse = await FactoryApi.getFactoryStatus()
-        if (statusResponse.success && statusResponse.data) {
-          setStatus(statusResponse.data)
-        } else {
-          setError(statusResponse.error || "Failed to fetch status")
-        }
-      } catch (err) {
-        setError("An unexpected error occurred")
-        console.error(err)
-      } finally {
-        setLoading(false)
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      // Fetch metrics
+      const metricsResponse = await FactoryApi.getFactoryMetrics()
+      if (metricsResponse.success && metricsResponse.data) {
+        setMetrics(metricsResponse.data)
+      } else {
+        setError(metricsResponse.error || "Failed to fetch metrics")
       }
-    }
 
-    fetchData()
+      // Fetch status
+      const statusResponse = await FactoryApi.getFactoryStatus()
+      if (statusResponse.success && statusResponse.data) {
+        setStatus(statusResponse.data)
+      } else {
+        setError(statusResponse.error || "Failed to fetch status")
+      }
+    } catch (err) {
+      setError("An unexpected error occurred")
+      console.error(err)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
   }, [])
 
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  const handleRefresh = () => {
+    setRefreshing(true)
+    fetchData()
+  }
+
+  // Monthly data for development
+  const monthlyData: TimeSeriesDataPoint[] = [
+    { name: "January", production: 4200, efficiency: 82, downtime: 12 },
+    { name: "February", production: 3800, efficiency: 78, downtime: 15 },
+    { name: "March", production: 5100, efficiency: 85, downtime: 8 },
+    { name: "April", production: 4700, efficiency: 80, downtime: 10 },
+    { name: "May", production: 5300, efficiency: 87, downtime: 7 },
+    { name: "June", production: 4900, efficiency: 83, downtime: 9 },
+    { name: "July", production: 5200, efficiency: 86, downtime: 6 },
+    { name: "August", production: 5000, efficiency: 84, downtime: 8 },
+    { name: "September", production: 5400, efficiency: 88, downtime: 5 },
+    { name: "October", production: 5600, efficiency: 89, downtime: 4 },
+    { name: "November", production: 5200, efficiency: 85, downtime: 7 },
+    { name: "December", production: 4800, efficiency: 81, downtime: 11 },
+  ]
+
+  // Yearly data for development
+  const yearlyData: TimeSeriesDataPoint[] = [
+    { name: "2018", production: 48000, efficiency: 79, downtime: 120 },
+    { name: "2019", production: 52000, efficiency: 82, downtime: 105 },
+    { name: "2020", production: 49000, efficiency: 80, downtime: 115 },
+    { name: "2021", production: 55000, efficiency: 84, downtime: 95 },
+    { name: "2022", production: 59000, efficiency: 86, downtime: 85 },
+    { name: "2023", production: 62000, efficiency: 88, downtime: 75 },
+  ]
+
   // Fallback data for development
-  const fallbackMetrics = {
+  const fallbackMetrics: FactoryMetrics = {
     production: 1245,
     efficiency: 89.2,
     downtime: 3.2,
     profitMargin: 24.5,
-    timeSeriesData: [
-      { name: "Day 1", production: 4000, efficiency: 80, downtime: 2 },
-      { name: "Day 5", production: 3000, efficiency: 75, downtime: 3 },
-      { name: "Day 10", production: 2000, efficiency: 70, downtime: 4 },
-      { name: "Day 15", production: 2780, efficiency: 78, downtime: 2.5 },
-      { name: "Day 20", production: 1890, efficiency: 65, downtime: 5 },
-      { name: "Day 25", production: 2390, efficiency: 72, downtime: 3.5 },
-      { name: "Day 30", production: 3490, efficiency: 85, downtime: 1.5 },
-    ],
+    timeSeriesData: monthlyData,
   }
 
   // Use actual data or fallback
   const displayMetrics = metrics || fallbackMetrics
 
+  // Get data based on the selected time filter
+  const getFilteredData = (dataKey: string): TimeSeriesDataPoint[] => {
+    if (timeFilter === "yearly") {
+      return yearlyData
+    } else {
+      return monthlyData
+    }
+  }
+
+  // Create a compatible status array with the missing lastMaintenance field
+  const compatibleStatus = status
+    ? status.map((item) => ({
+        ...item,
+        lastMaintenance: item.lastMaintenance || new Date().toISOString(), // Provide a default value
+      }))
+    : []
+
   return (
     <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Factory Dashboard</h1>
+        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading || refreshing}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+          {refreshing ? "Refreshing..." : "Refresh Data"}
+        </Button>
+      </div>
+
       {error && (
         <Alert variant="destructive">
           <AlertTitle>Error</AlertTitle>
@@ -108,7 +167,7 @@ export default function FactoryDashboard() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{displayMetrics.efficiency}%</div>
+                <div className="text-2xl font-bold">{displayMetrics.efficiency.toFixed(1)}%</div>
                 <p className="text-xs text-muted-foreground">
                   <span
                     className={`${displayMetrics.efficiency > 55 ? "text-green-500" : "text-amber-500"} inline-flex items-center`}
@@ -132,10 +191,10 @@ export default function FactoryDashboard() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{displayMetrics.downtime} hours</div>
+                <div className="text-2xl font-bold">{displayMetrics.downtime.toFixed(1)} hours</div>
                 <p className="text-xs text-muted-foreground">
                   <span
-                    className={`${displayMetrics.downtime < 0.5 ? "text-green-500" : "text-red-500"} inline-flex items-center`}
+                    className={`${displayMetrics.downtime < 5 ? "text-green-500" : "text-red-500"} inline-flex items-center`}
                   >
                     <ArrowUp className="mr-1 h-3 w-3" />
                     0.8 hours
@@ -156,7 +215,7 @@ export default function FactoryDashboard() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{displayMetrics.profitMargin}%</div>
+                <div className="text-2xl font-bold">{displayMetrics.profitMargin.toFixed(1)}%</div>
                 <p className="text-xs text-muted-foreground">
                   <span className="text-green-500 inline-flex items-center">
                     <ArrowUp className="mr-1 h-3 w-3" />
@@ -170,74 +229,144 @@ export default function FactoryDashboard() {
         </Card>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs defaultValue="production" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
+          <TabsTrigger value="production">Production</TabsTrigger>
+          <TabsTrigger value="efficiency">Efficiency</TabsTrigger>
+          <TabsTrigger value="downtime">Downtime</TabsTrigger>
+          <TabsTrigger value="status">Machine Status</TabsTrigger>
         </TabsList>
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-4">
-              <CardHeader>
-                <CardTitle>Factory Performance</CardTitle>
-                <CardDescription>Production metrics over the last 30 days</CardDescription>
-              </CardHeader>
-              <CardContent className="pl-2">
-                {loading ? (
-                  <div className="h-[350px] flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-                      <p className="text-muted-foreground">Loading chart data...</p>
-                    </div>
-                  </div>
-                ) : (
-                  <FactoryMetricsChart data={displayMetrics.timeSeriesData} />
-                )}
-              </CardContent>
-            </Card>
-            <Card className="col-span-3">
-              <CardHeader>
-                <CardTitle>Factory Status</CardTitle>
-                <CardDescription>Current status of production lines</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <Skeleton key={i} className="h-10 w-full" />
-                    ))}
-                  </div>
-                ) : (
-                  <FactoryStatusTable data={status} />
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-        <TabsContent value="analytics" className="space-y-4">
+
+        <TabsContent value="production" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Advanced Analytics</CardTitle>
-              <CardDescription>Detailed analysis of factory performance</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px] flex items-center justify-center border rounded-md">
-                <p className="text-muted-foreground">Advanced analytics content will appear here</p>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle>Production Data</CardTitle>
+                <CardDescription>
+                  {timeFilter === "monthly" ? "Monthly production volume" : "Yearly production volume"}
+                </CardDescription>
               </div>
+              <ToggleGroup
+                type="single"
+                value={timeFilter}
+                onValueChange={(value) => value && setTimeFilter(value as TimeFilter)}
+              >
+                <ToggleGroupItem value="monthly">Monthly</ToggleGroupItem>
+                <ToggleGroupItem value="yearly">Yearly</ToggleGroupItem>
+              </ToggleGroup>
+            </CardHeader>
+            <CardContent className="pl-2">
+              {loading ? (
+                <div className="h-[350px] flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Loading chart data...</p>
+                  </div>
+                </div>
+              ) : (
+                <FactoryMetricsChart
+                  data={getFilteredData("production")}
+                  dataKey="production"
+                  color="#8884d8"
+                  yAxisLabel="Units"
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="reports" className="space-y-4">
+
+        <TabsContent value="efficiency" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle>Efficiency Data</CardTitle>
+                <CardDescription>
+                  {timeFilter === "monthly" ? "Monthly efficiency percentage" : "Yearly efficiency percentage"}
+                </CardDescription>
+              </div>
+              <ToggleGroup
+                type="single"
+                value={timeFilter}
+                onValueChange={(value) => value && setTimeFilter(value as TimeFilter)}
+              >
+                <ToggleGroupItem value="monthly">Monthly</ToggleGroupItem>
+                <ToggleGroupItem value="yearly">Yearly</ToggleGroupItem>
+              </ToggleGroup>
+            </CardHeader>
+            <CardContent className="pl-2">
+              {loading ? (
+                <div className="h-[350px] flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Loading chart data...</p>
+                  </div>
+                </div>
+              ) : (
+                <FactoryMetricsChart
+                  data={getFilteredData("efficiency")}
+                  dataKey="efficiency"
+                  color="#82ca9d"
+                  yAxisLabel="%"
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="downtime" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle>Downtime Data</CardTitle>
+                <CardDescription>
+                  {timeFilter === "monthly" ? "Monthly downtime hours" : "Yearly downtime hours"}
+                </CardDescription>
+              </div>
+              <ToggleGroup
+                type="single"
+                value={timeFilter}
+                onValueChange={(value) => value && setTimeFilter(value as TimeFilter)}
+              >
+                <ToggleGroupItem value="monthly">Monthly</ToggleGroupItem>
+                <ToggleGroupItem value="yearly">Yearly</ToggleGroupItem>
+              </ToggleGroup>
+            </CardHeader>
+            <CardContent className="pl-2">
+              {loading ? (
+                <div className="h-[350px] flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Loading chart data...</p>
+                  </div>
+                </div>
+              ) : (
+                <FactoryMetricsChart
+                  data={getFilteredData("downtime")}
+                  dataKey="downtime"
+                  color="#ff8042"
+                  yAxisLabel="Hours"
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="status" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Reports</CardTitle>
-              <CardDescription>Generated reports and insights</CardDescription>
+              <CardTitle>Factory Status</CardTitle>
+              <CardDescription>Current status of production lines</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px] flex items-center justify-center border rounded-md">
-                <p className="text-muted-foreground">Reports content will appear here</p>
-              </div>
+              {loading ? (
+                <div className="space-y-2">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <FactoryStatusTable data={compatibleStatus as unknown as FactoryStatus[]} />
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -1,8 +1,20 @@
+"use client"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Bot, Factory } from "lucide-react"
+import { useContext } from "react"
+import { createContext } from "react"
+
+export const DashboardContext = createContext<{
+  setCurrentPage: (page: string) => void
+}>({
+  setCurrentPage: () => {},
+})
 
 export default function HomePage() {
+  const { setCurrentPage } = useContext(DashboardContext)
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col items-center justify-center space-y-4 text-center py-10">
@@ -19,7 +31,10 @@ export default function HomePage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 mt-10">
-        <Card className="backdrop-blur-sm bg-background/80 border-primary/20 hover:border-primary/50 transition-colors">
+        <Card
+          className="backdrop-blur-sm bg-background/80 border-primary/20 hover:border-primary/50 transition-colors cursor-pointer"
+          onClick={() => setCurrentPage("Factory Dashboard")}
+        >
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Factory className="h-5 w-5 text-primary" />
@@ -37,7 +52,10 @@ export default function HomePage() {
           </CardContent>
         </Card>
 
-        <Card className="backdrop-blur-sm bg-background/80 border-primary/20 hover:border-primary/50 transition-colors">
+        <Card
+          className="backdrop-blur-sm bg-background/80 border-primary/20 hover:border-primary/50 transition-colors cursor-pointer"
+          onClick={() => setCurrentPage("Factory Bot")}
+        >
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bot className="h-5 w-5 text-primary" />
@@ -64,7 +82,7 @@ export default function HomePage() {
               Our AI-powered Factory Bot can answer questions and provide insights about your factory operations.
             </p>
           </div>
-          <Button className="bg-primary hover:bg-primary/90">
+          <Button className="bg-primary hover:bg-primary/90" onClick={() => setCurrentPage("Factory Bot")}>
             Open Factory Bot
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>

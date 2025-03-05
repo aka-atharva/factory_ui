@@ -2,21 +2,21 @@
 
 import { CardFooter } from "@/components/ui/card"
 
-import { CardDescription } from "@/components/ui/card"
+import type React from "react"
 
-import { useState, useEffect, useRef } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { useState, useRef, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Bot, Send, User } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { FactoryApi } from "@/lib/api-service"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Send } from "lucide-react"
 
-type Message = {
+interface Message {
   id: string
   content: string
-  role: "user" | "assistant"
+  sender: "user" | "bot"
   timestamp: Date
 }
 
@@ -24,35 +24,37 @@ export default function FactoryBot() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      content: "Hello! I'm Factory Bot, your AI assistant for factory operations. How can I help you today?",
-      role: "assistant",
+      content: "Hello! I'm your factory assistant. How can I help you today?",
+      sender: "bot",
       timestamp: new Date(),
     },
   ])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Scroll to bottom of messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messagesEndRef]) //Corrected dependency
+    scrollToBottom()
+  }, []) // Updated dependency array
 
-  const handleSendMessage = async () => {
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  const handleSend = async () => {
     if (!input.trim()) return
 
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
       content: input,
-      role: "user",
+      sender: "user",
       timestamp: new Date(),
     }
+
     setMessages((prev) => [...prev, userMessage])
     setInput("")
     setIsLoading(true)
-    setError(null)
 
     try {
       // Send message to API
@@ -60,158 +62,104 @@ export default function FactoryBot() {
 
       if (response.success && response.data) {
         const botResponse: Message = {
-          id: response.data.id || (Date.now() + 1).toString(),
-          content: response.data.content,
-          role: "assistant",
+          id: (Date.now() + 1).toString(),
+          content: response.data.message,
+          sender: "bot",
           timestamp: new Date(response.data.timestamp || Date.now()),
         }
         setMessages((prev) => [...prev, botResponse])
       } else {
-        setError(response.error || "Failed to get response from Factory Bot")
-
-        // Fallback response if API fails
-        const fallbackResponse: Message = {
+        // Handle error
+        const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
-          content: "I'm having trouble connecting to the factory systems. Please try again later.",
-          role: "assistant",
+          content: "Sorry, I'm having trouble processing your request right now.",
+          sender: "bot",
           timestamp: new Date(),
         }
-        setMessages((prev) => [...prev, fallbackResponse])
+        setMessages((prev) => [...prev, errorMessage])
       }
-    } catch (err) {
-      setError("An unexpected error occurred")
-      console.error(err)
-
-      // Fallback response
-      const fallbackResponse: Message = {
+    } catch (error) {
+      console.error("Error sending message:", error)
+      const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "I'm having trouble connecting to the factory systems. Please try again later.",
-        role: "assistant",
+        content: "Sorry, I'm having trouble processing your request right now.",
+        sender: "bot",
         timestamp: new Date(),
       }
-      setMessages((prev) => [...prev, fallbackResponse])
+      setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Suggest some example questions
-  const exampleQuestions = [
-    "What's our current production rate?",
-    "How's our factory efficiency?",
-    "Any downtime issues?",
-    "What's the status of our production lines?",
-  ]
-
-  const handleExampleClick = (question: string) => {
-    setInput(question)
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
   }
 
   return (
-    <div className="container mx-auto max-w-4xl">
-      <Card className="h-[calc(100vh-10rem)]">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bot className="h-6 w-6 text-primary" />
-            Factory Bot
-          </CardTitle>
-          <CardDescription>AI-powered assistant for factory operations and insights</CardDescription>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto">
+    <Card className="w-full h-[calc(100vh-2rem)] flex flex-col">
+      <CardHeader>
+        <CardTitle>Factory Assistant</CardTitle>
+        <CardDescription>Ask questions about factory operations and data</CardDescription>
+      </CardHeader>
+      <CardContent className="flex-grow overflow-hidden p-0">
+        <ScrollArea className="h-full p-4">
           <div className="space-y-4 pb-4">
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
             {messages.map((message) => (
-              <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div
-                  className={`flex items-start gap-3 max-w-[80%] ${message.role === "user" ? "flex-row-reverse" : ""}`}
-                >
-                  <Avatar className={message.role === "assistant" ? "bg-primary/10 text-primary" : "bg-muted"}>
-                    <AvatarFallback>
-                      {message.role === "assistant" ? <Bot className="h-5 w-5" /> : <User className="h-5 w-5" />}
-                    </AvatarFallback>
-                  </Avatar>
+              <div key={message.id} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
+                <div className="flex items-start gap-2 max-w-[80%]">
+                  {message.sender === "bot" && (
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src="/bot-avatar.png" alt="Bot" />
+                      <AvatarFallback>FA</AvatarFallback>
+                    </Avatar>
+                  )}
                   <div
-                    className={`rounded-lg px-4 py-3 ${
-                      message.role === "assistant" ? "bg-muted text-foreground" : "bg-primary text-primary-foreground"
+                    className={`rounded-lg px-4 py-2 ${
+                      message.sender === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
                     }`}
                   >
-                    <p>{message.content}</p>
-                    <div className="mt-1 text-xs opacity-50">
-                      {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </div>
+                    <p className="text-sm">{message.content}</p>
+                    <p className="text-xs opacity-50 mt-1">
+                      {message.timestamp.toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
                   </div>
+                  {message.sender === "user" && (
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src="/user-avatar.png" alt="User" />
+                      <AvatarFallback>U</AvatarFallback>
+                    </Avatar>
+                  )}
                 </div>
               </div>
             ))}
-
-            {messages.length === 1 && (
-              <div className="mt-6 space-y-4">
-                <p className="text-sm text-muted-foreground text-center">Try asking one of these questions:</p>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {exampleQuestions.map((question, index) => (
-                    <Button
-                      key={index}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleExampleClick(question)}
-                      className="text-xs"
-                    >
-                      {question}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="flex items-start gap-3 max-w-[80%]">
-                  <Avatar className="bg-primary/10 text-primary">
-                    <AvatarFallback>
-                      <Bot className="h-5 w-5" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="rounded-lg px-4 py-3 bg-muted text-foreground">
-                    <div className="flex space-x-2">
-                      <div className="h-2 w-2 rounded-full bg-current animate-bounce [animation-delay:-0.3s]"></div>
-                      <div className="h-2 w-2 rounded-full bg-current animate-bounce [animation-delay:-0.15s]"></div>
-                      <div className="h-2 w-2 rounded-full bg-current animate-bounce"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
             <div ref={messagesEndRef} />
           </div>
-        </CardContent>
-        <CardFooter className="border-t p-4">
-          <form
-            className="flex w-full items-center space-x-2"
-            onSubmit={(e) => {
-              e.preventDefault()
-              handleSendMessage()
-            }}
-          >
-            <Input
-              placeholder="Ask about factory operations, maintenance, or performance..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              className="flex-1"
-              disabled={isLoading}
-            />
-            <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-              <Send className="h-4 w-4" />
-            </Button>
-          </form>
-        </CardFooter>
-      </Card>
-    </div>
+        </ScrollArea>
+      </CardContent>
+      <CardFooter className="border-t p-4">
+        <div className="flex w-full items-center space-x-2">
+          <Input
+            placeholder="Type your message..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={isLoading}
+            className="flex-1"
+          />
+          <Button size="icon" onClick={handleSend} disabled={isLoading || !input.trim()}>
+            <Send className="h-4 w-4" />
+            <span className="sr-only">Send</span>
+          </Button>
+        </div>
+      </CardFooter>
+    </Card>
   )
 }
 

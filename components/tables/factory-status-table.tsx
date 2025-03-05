@@ -1,86 +1,84 @@
-import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import type { FactoryStatus } from "@/lib/api-service-old"
+import { Badge } from "@/components/ui/badge"
 
-interface FactoryStatusTableProps {
-  data: FactoryStatus[] | null
-}
-
-// Fallback data for development
-const fallbackData: FactoryStatus[] = [
+// Update the mock data to use numbers for efficiency
+const mockData = [
   {
-    id: "line-1",
+    id: "1",
     name: "Production Line 1",
     status: "operational",
-    efficiency: "92%",
+    efficiency: 92, // Changed from "92%" to 92
     lastMaintenance: "3 days ago",
   },
   {
-    id: "line-2",
+    id: "2",
     name: "Production Line 2",
+    status: "maintenance",
+    efficiency: 0, // Changed from "0%" to 0
+    lastMaintenance: "In progress",
+  },
+  {
+    id: "3",
+    name: "Production Line 3",
     status: "operational",
-    efficiency: "88%",
+    efficiency: 87, // Changed from "87%" to 87
     lastMaintenance: "1 week ago",
   },
   {
-    id: "line-3",
-    name: "Production Line 3",
-    status: "warning",
-    efficiency: "76%",
-    lastMaintenance: "2 weeks ago",
-  },
-  {
-    id: "line-4",
-    name: "Production Line 4",
-    status: "down",
-    efficiency: "0%",
-    lastMaintenance: "1 day ago",
-  },
-  {
-    id: "line-5",
-    name: "Production Line 5",
+    id: "4",
+    name: "Assembly Line A",
     status: "operational",
-    efficiency: "95%",
-    lastMaintenance: "5 days ago",
+    efficiency: 95, // Changed from "95%" to 95
+    lastMaintenance: "2 days ago",
+  },
+  {
+    id: "5",
+    name: "Assembly Line B",
+    status: "offline",
+    efficiency: 0, // Changed from "0%" to 0
+    lastMaintenance: "Scheduled tomorrow",
   },
 ]
 
-export function FactoryStatusTable({ data }: FactoryStatusTableProps) {
-  // Use actual data or fallback
-  const factoryLines = data || fallbackData
+export function FactoryStatusTable({ data = mockData }) {
+  // Use the provided data or fallback to mock data
+  const displayData = data.length > 0 ? data : mockData
+
+  // Function to get the appropriate badge color based on status
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "operational":
+        return "bg-green-500"
+      case "maintenance":
+        return "bg-yellow-500"
+      case "offline":
+        return "bg-red-500"
+      default:
+        return "bg-gray-500"
+    }
+  }
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Line</TableHead>
+          <TableHead>Name</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Efficiency</TableHead>
           <TableHead>Last Maintenance</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {factoryLines.map((line) => (
-          <TableRow key={line.id}>
-            <TableCell className="font-medium">{line.name}</TableCell>
+        {displayData.map((item) => (
+          <TableRow key={item.id}>
+            <TableCell className="font-medium">{item.name}</TableCell>
             <TableCell>
-              <Badge
-                variant={
-                  line.status === "operational" ? "default" : line.status === "warning" ? "outline" : "destructive"
-                }
-                className={
-                  line.status === "operational"
-                    ? "bg-green-500/20 text-green-700 hover:bg-green-500/20 hover:text-green-700"
-                    : line.status === "warning"
-                      ? "bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/20 hover:text-yellow-700"
-                      : ""
-                }
-              >
-                {line.status === "operational" ? "Operational" : line.status === "warning" ? "Warning" : "Down"}
+              <Badge className={getStatusColor(item.status)}>
+                {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
               </Badge>
             </TableCell>
-            <TableCell>{line.efficiency}</TableCell>
-            <TableCell>{line.lastMaintenance}</TableCell>
+            <TableCell>{item.efficiency}%</TableCell>
+            <TableCell>{item.lastMaintenance}</TableCell>
           </TableRow>
         ))}
       </TableBody>
