@@ -1,15 +1,23 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardHeader from "@/components/dashboard-header"
 import FactoryDashboard from "@/components/pages/factory-dashboard"
 import FactoryBot from "@/components/pages/factory-bot"
 import HomePage from "@/components/pages/home"
-import { SparklesCore } from "@/components/sparkles"
+import InteractiveParticles from "@/components/interactive-particles"
 import { DashboardContext } from "@/components/pages/home"
+import { useTheme } from "next-themes"
 
 export default function Dashboard() {
   const [currentPage, setCurrentPage] = useState("Home")
+  const { resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  // Only render particles after component is mounted to avoid hydration issues
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const pages = [
     { name: "Home", icon: "Home" },
@@ -33,18 +41,17 @@ export default function Dashboard() {
   return (
     <DashboardContext.Provider value={{ setCurrentPage }}>
       <div className="min-h-screen bg-background relative">
-        {/* Particles background */}
-        <div className="fixed inset-0 z-0 pointer-events-none">
-          <SparklesCore
-            id="tsparticles"
-            background="transparent"
-            particleColor="hsl(var(--primary) / 0.1)"
-            particleDensity={100}
-            className="h-full w-full"
-            minSize={0.6}
-            maxSize={1.4}
+        {/* Only render particles after component is mounted */}
+        {mounted && (
+          <InteractiveParticles
+            quantity={150}
+            staticity={30}
+            ease={60}
+            lightThemeColor="rgba(124, 58, 237, 0.8)" // Darker, more opaque purple for light theme
+            darkThemeColor="rgba(255, 255, 255, 0.3)" // Original color for dark theme
+            particleSize={1.8} // Slightly larger particles for better visibility
           />
-        </div>
+        )}
 
         <div className="flex flex-col h-screen relative z-10">
           <DashboardHeader currentPage={currentPage} setCurrentPage={setCurrentPage} pages={pages} />
