@@ -65,7 +65,7 @@ export default function FactoryBot() {
           id: (Date.now() + 1).toString(),
           content: response.data.message,
           sender: "bot",
-          timestamp: new Date(response.data.timestamp || Date.now()),
+          timestamp: new Date(Date.now()),
         }
         setMessages((prev) => [...prev, botResponse])
       } else {

@@ -48,9 +48,7 @@ class BotMessageRequest(BaseModel):
     message: str
 
 class BotResponse(BaseModel):
-    id: str
-    content: str
-    timestamp: str
+    message: str
 
 # CSV data
 # CSV_DATA = """Factory,Date,Location,Machine Type,Machine Utilization (%),Machine Downtime (hours),Maintenance History,Machine Age (years),Batch,Batch Quality (Pass %),Cycle Time (minutes),Energy Consumption (kWh),Energy Efficiency Rating,CO2 Emissions (kg),Emission Limit Compliance,Waste Generated (kg),Water Usage (liters),Shift,Operator Experience (years),Team Size,Team Members,Operator Training Level,Absenteeism Rate (%),Product Category,Supplier,Supplier Delays (days),Raw Material Quality,Market Demand Index,Cost of Downtime ($),Revenue ($),Profit Margin (%),Breakdowns (count),Safety Incidents (count),Production Volume (units),Defect Rate (%),Temperature (C),Pressure (psi),Chemical Ratio,Mixing Speed (RPM)
@@ -220,8 +218,25 @@ class DataStore:
 # Initialize data store
 data_store = DataStore()
 
+import threading
+import asyncio
+from api.kg_rag import kg_rag
+
+import os
+from dotenv import load_dotenv
+
+def initialize_graph():
+    asyncio.run(kg_rag.init_graph())
+
+# Initialize the graph in a separate thread
+thread = threading.Thread(target=initialize_graph, daemon=True)
+thread.start()
+
 # Bot responses with more context awareness
 def get_bot_response(message: str) -> str:
+    return kg_rag.get_kg_answer(message)
+
+def get_bot_response1(message: str) -> str:
     message = message.lower()
     
     # Get current metrics for context-aware responses
@@ -315,14 +330,12 @@ async def get_energy_metrics():
     energy_metrics = data_store.get_energy_metrics()
     return energy_metrics
 
-@app.post("/api/factory/bot/message", response_model=BotResponse)
+@app.post("/api/factory/bot", response_model=BotResponse)
 async def send_bot_message(request: BotMessageRequest):
     response_content = get_bot_response(request.message)
     
     return BotResponse(
-        id=str(uuid.uuid4()),
-        content=response_content,
-        timestamp=datetime.datetime.now().isoformat()
+        message=response_content['result']
     )
 
 # Serve the frontend

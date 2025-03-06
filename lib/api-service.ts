@@ -27,7 +27,6 @@ export interface FactoryStatus {
 // Add interface for bot message response
 export interface BotResponse {
   message: string
-  timestamp: string
 }
 
 interface ApiResponse<T> {
